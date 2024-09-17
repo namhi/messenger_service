@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nam_messenger_service/src/data_message_base.dart';
-import 'package:nam_messenger_service/src/messenger_service.dart';
+import 'package:messenger_service/messenger_service.dart';
 
 void main() {
   test('adds one to input values', () {

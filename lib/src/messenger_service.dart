@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:logger/logger.dart';
+import 'package:messenger_service/messenger_service.dart';
 import 'package:rxdart/rxdart.dart';
-import 'data_message_base.dart';
+import 'dart:developer';
 
 /// This is a service using as messenger delivery.
 ///
@@ -16,12 +16,26 @@ class MessengerService {
   /// you can use MessengerService.instance or MessengerService.i
   static MessengerService get i => instance;
 
-  final Logger _logger = Logger();
   final PublishSubject<dynamic> _messengerSubject = PublishSubject<dynamic>();
+  MessengerObserver observer = DefaultMessengerObserver();
+
+  bool _showDebugLog = true;
+  set showDebugLog(bool value) {
+    _showDebugLog = value;
+  }
 
   void send<T extends MessageBase>(T data) {
     _messengerSubject.add(data);
-    _logger.i('on send(data: $data)');
+    observer.onSend(data);
+  }
+
+  void _log(String message) {
+    if (_showDebugLog) {
+      log(
+        message,
+        name: 'MessengerService',
+      );
+    }
   }
 
   /// Register message listener from [receiver]
@@ -34,8 +48,7 @@ class MessengerService {
     List<Object>? tokens,
     List<Object>? senderTypes,
   }) {
-    _logger.i('${receiver.runtimeType} Registered new Message type $T');
-
+    observer.onResiger(receiver, T.toString());
     final senderTokenTemp = tokens ?? <Object>[];
     if (token != null) {
       senderTokenTemp.add(token);
@@ -59,7 +72,10 @@ class MessengerService {
             senderTypeTemp.contains((event as MessageBase).senderType))
         .listen(
       (dynamic event) {
-        _logger.d('On receive message:  (receiver: $receiver, message: $event');
+        final register = _messengerSubject.toList();
+        _log(register.toString());
+        observer.onMessage(event, receiver);
+
         onMessage.call(event as T);
       },
     );

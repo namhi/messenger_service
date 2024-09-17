@@ -1,6 +1,3 @@
-//@dart=2.12
-import 'package:flutter/cupertino.dart';
-
 /// Tất cả các gói tin Message sử dụng  trong Messenger Service đều phải extends class này.
 class MessageBase {
   const MessageBase({
