@@ -11,6 +11,8 @@ abstract class MessengerObserver {
 
   /// Called whenever a messsage delivered to a receiver.
   void onMessage(dynamic message, dynamic receiver) {}
+
+  void onUnregister(dynamic receiver) {}
 }
 
 class DefaultMessengerObserver extends MessengerObserver {
@@ -31,6 +33,11 @@ class DefaultMessengerObserver extends MessengerObserver {
   void onMessage(dynamic message, dynamic receiver) {
     _log(
         'Deliver message:  (receiver: ${receiver.runtimeType}, message: $message');
+  }
+
+  @override
+  void onUnregister(dynamic receiver) {
+    _log('unregister<$receiver>()');
   }
 
   void _log(String message) {

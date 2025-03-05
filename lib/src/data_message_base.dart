@@ -6,14 +6,15 @@ class MessageBase {
     this.receiverType,
     this.senderType,
     this.message,
+    this.senderName,
   });
 
-  ///The listener can base on [token] to filter messages they want to receive.
+  /// The listener can base on [token] to filter messages they want to receive.
   final String? token;
 
-  ///Sender of this message.
+  /// Sender of this message.
   ///
-  ///Be careful when using it because maybe sender class is not dispose.
+  /// Be careful when using it because maybe sender class is not dispose.
   final Object? sender;
 
   /// Type of class want to notify to.
@@ -21,6 +22,8 @@ class MessageBase {
 
   /// Type of sender. Maybe using it to filter the messages they want to receive.
   final Type? senderType;
+
+  final String? senderName;
 
   final String? message;
 

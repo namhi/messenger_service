@@ -7,8 +7,6 @@ import 'package:rxdart/rxdart.dart';
 import 'dart:developer';
 
 /// This is a service using as messenger delivery.
-///
-/// When using it you must remember to close the stream of listener register.
 class MessengerService {
   MessengerService._();
   static MessengerService instance = MessengerService._();
@@ -16,8 +14,18 @@ class MessengerService {
   /// you can use MessengerService.instance or MessengerService.i
   static MessengerService get i => instance;
 
-  final PublishSubject<dynamic> _messengerSubject = PublishSubject<dynamic>();
+  final PublishSubject<MessageBase> _messengerSubject =
+      PublishSubject<MessageBase>();
   MessengerObserver observer = DefaultMessengerObserver();
+
+  /// Save all subscriptions to close when dispose.
+  static final List<MessengerSubscriptionInfo> _subscriptions =
+      <MessengerSubscriptionInfo>[];
+
+  static bool isRegister<T>() {
+    final register = _subscriptions.whereType<StreamSubscription<T>>().toList();
+    return register.isNotEmpty;
+  }
 
   bool _showDebugLog = true;
   set showDebugLog(bool value) {
@@ -38,52 +46,67 @@ class MessengerService {
     }
   }
 
+  /// Unregister message listener from [receiver]
+  ///
+  /// [onMessage] is optional, if you want to unregister a specific message listener.
+  void unregister<T extends MessageBase>(
+    Object receiver, {
+    Function? onMessage,
+  }) {
+    final register = _subscriptions
+        .where(
+          (e) =>
+              e.subscription is StreamSubscription<T> &&
+              receiver == e.receiver &&
+              (onMessage == null || e.messageFunction == onMessage),
+        )
+        .toList();
+
+    for (final sub in register) {
+      sub.subscription.cancel();
+      _subscriptions.remove(sub);
+      _log('Unregister: ${sub.subscription} in ${receiver.runtimeType}');
+    }
+  }
+
   /// Register message listener from [receiver]
-  StreamSubscription register<T extends MessageBase>(
+  void register<T extends MessageBase>(
     Object receiver,
     void Function(T message) onMessage, {
-    Object? token,
-    Object? sender,
-    Object? senderType,
-    List<Object>? tokens,
-    List<Object>? senderTypes,
+    String? token,
   }) {
     observer.onResiger(receiver, T.toString());
-    final senderTokenTemp = tokens ?? <Object>[];
-    if (token != null) {
-      senderTokenTemp.add(token);
-    }
-    final senderTypeTemp = senderTypes ?? [];
-    if (senderType != null) {
-      senderTypeTemp.add(senderType);
-    }
-
     final messengerSubscriptions = _messengerSubject
-        .where((dynamic event) => event is T)
-        .where((dynamic event) =>
-            (event as MessageBase).sender == null || event.sender != receiver)
-        .where((dynamic event) =>
-            senderTokenTemp.isEmpty ||
-            senderTokenTemp.contains((event as MessageBase).token))
-        .where((dynamic event) =>
-            sender == null || sender == (event as MessageBase).sender)
-        .where((dynamic event) =>
-            senderType == null ||
-            senderTypeTemp.contains((event as MessageBase).senderType))
+        .where(
+      (event) => event is T,
+    )
         .listen(
-      (dynamic event) {
-        final register = _messengerSubject.toList();
-        _log(register.toString());
+      (event) {
         observer.onMessage(event, receiver);
-
         onMessage.call(event as T);
       },
     );
-    return messengerSubscriptions;
+    _subscriptions.add(MessengerSubscriptionInfo(
+      receiver: receiver,
+      subscription: messengerSubscriptions,
+      messageFunction: onMessage,
+    ));
   }
 
   @mustCallSuper
   void dispose() {
     _messengerSubject.close();
   }
+}
+
+class MessengerSubscriptionInfo {
+  MessengerSubscriptionInfo({
+    required this.receiver,
+    required this.subscription,
+    required this.messageFunction,
+  });
+
+  final Object receiver;
+  final StreamSubscription<MessageBase> subscription;
+  Function messageFunction;
 }
