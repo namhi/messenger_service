@@ -1,34 +1,43 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
 /// Tất cả các gói tin Message sử dụng  trong Messenger Service đều phải extends class này.
-class MessageBase {
-  const MessageBase({
+abstract class MessageBase {
+  MessageBase({
+    required this.sender,
     this.token,
-    this.sender,
-    this.receiverType,
-    this.senderType,
-    this.message,
-    this.senderName,
+    this.metadata,
   });
 
-  /// The listener can base on [token] to filter messages they want to receive.
+  final Object sender;
   final String? token;
-
-  /// Sender of this message.
-  ///
-  /// Be careful when using it because maybe sender class is not dispose.
-  final Object? sender;
-
-  /// Type of class want to notify to.
-  final Type? receiverType;
-
-  /// Type of sender. Maybe using it to filter the messages they want to receive.
-  final Type? senderType;
-
-  final String? senderName;
-
-  final String? message;
+  final Map<String, dynamic>? metadata;
 
   @override
   String toString() {
-    return '$runtimeType(sender: $senderType, receiver: $receiverType, token: $token)';
+    return '$runtimeType(sender: $sender, token: $token)';
   }
+}
+
+@freezed
+class MessengerObserverMessage extends MessageBase {
+  MessengerObserverMessage({
+    required super.sender,
+    super.token,
+    required this.event,
+    this.receiver,
+    this.receiverToken,
+    this.registerType,
+    this.registerToken,
+  });
+  final MessengerEvent event;
+  final Object? receiver;
+  final String? receiverToken;
+  final Type? registerType;
+  final String? registerToken;
+}
+
+enum MessengerEvent {
+  register,
+  messageSend,
+  unregister,
 }

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:messenger_service/messenger_service.dart';
 import 'package:rxdart/rxdart.dart';
@@ -19,10 +18,12 @@ class MessengerService {
   MessengerObserver observer = DefaultMessengerObserver();
 
   /// Save all subscriptions to close when dispose.
-  static final List<MessengerSubscriptionInfo> _subscriptions =
+  final List<MessengerSubscriptionInfo> _subscriptions =
       <MessengerSubscriptionInfo>[];
 
-  static bool isRegister<T>() {
+  List<MessengerSubscriptionInfo> get subscriptions => _subscriptions;
+
+  bool isRegister<T>() {
     final register = _subscriptions.whereType<StreamSubscription<T>>().toList();
     return register.isNotEmpty;
   }
@@ -76,25 +77,38 @@ class MessengerService {
     String? token,
   }) {
     observer.onResiger(receiver, T.toString());
-    final messengerSubscriptions = _messengerSubject
-        .where(
-      (event) => event is T,
-    )
-        .listen(
-      (event) {
+    final messengerSubscriptions = _messengerSubject.whereType<T>().listen(
+      (T event) {
         observer.onMessage(event, receiver);
-        onMessage.call(event as T);
+        onMessage.call(event);
       },
     );
-    _subscriptions.add(MessengerSubscriptionInfo(
-      receiver: receiver,
-      subscription: messengerSubscriptions,
-      messageFunction: onMessage,
-    ));
+    _subscriptions.add(
+      MessengerSubscriptionInfo(
+        receiver: receiver,
+        subscription: messengerSubscriptions,
+        messageFunction: onMessage,
+        token: token,
+        registerType: T,
+      ),
+    );
+    send<MessengerObserverMessage>(
+      MessengerObserverMessage(
+        sender: this,
+        event: MessengerEvent.register,
+        receiver: receiver,
+        receiverToken: token,
+        registerType: T,
+      ),
+    );
   }
 
   @mustCallSuper
-  void dispose() {
+  Future<void> dispose() async {
+    for (final sub in _subscriptions) {
+      await sub.subscription.cancel();
+      _log('Dispose: ${sub.subscription} in ${sub.receiver.runtimeType}');
+    }
     _messengerSubject.close();
   }
 }
@@ -104,9 +118,13 @@ class MessengerSubscriptionInfo {
     required this.receiver,
     required this.subscription,
     required this.messageFunction,
+    this.token,
+    required this.registerType,
   });
 
   final Object receiver;
   final StreamSubscription<MessageBase> subscription;
   Function messageFunction;
+  final String? token;
+  final Type registerType;
 }
